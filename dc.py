@@ -61,6 +61,7 @@ class DC:
             1: {
                 "name": "time",
                 "w_mode": {
+                    1: "hh:mm AM/PM",
                     2: "hh:mm",
                 },
                 "w_device": {
@@ -76,8 +77,8 @@ class DC:
             2: {
                 "name": "weekday",
                 "w_mode": {
-                    0: "0 星期六",
-                    1: "1 星期六",
+                    0: "0 IDK", # 星期日
+                    1: "1 IDK",
                 },
                 "w_device": {
                     0: {
@@ -93,7 +94,9 @@ class DC:
                 "name": "date",
                 "w_mode": {
                     1: "yyyy/mm/dd",
+                    2: "dd/mm/yyyy",
                     3: "mm/dd",
+                    4: "dd/mm",
                 },
                 "w_device": {
                     0: {
@@ -134,7 +137,16 @@ class DC:
                 f"Offset: ({self.x_offset}, {self.y_offset})\n")
 
 
-def dc_load_dd01(dc) -> int:
+def dc_load_dd(dc) -> int:
+    buffer = dc.read(1)
+    if buffer == b'\x00':
+        logger.info("theme without text/data widgets")
+        return 0
+    elif buffer == b'\x01':
+        pass
+    else:
+        logger.info(f"unexpected data {buffer}\n")
+
     # widgets count
     b = dc.read(4)
     wc = int.from_bytes(b, 'little')
@@ -163,7 +175,7 @@ def dc_load_dd01(dc) -> int:
 
         b = dc.read(4)
         c_alpha, c_r, c_g, c_b = struct.unpack("<BBBB", b)
-        rdc.c_alpha = c_alpha
+        rdc.c_alpha = c_alpha # unused in TRCC
         rdc.c_color = (c_r, c_g, c_b)
 
         b = dc.read(1)
@@ -180,9 +192,9 @@ def main(dc_file) -> int:
     logger.info(f"reading {dc_file}")
 
     with open(dc_file, "rb") as dc:
-        buffer = dc.read(2)
-        if buffer == b'\xdd\x01':
-            return dc_load_dd01(dc)
+        buffer = dc.read(1)
+        if buffer == b'\xdd':
+            return dc_load_dd(dc)
         else:
             logger.fatal(f"Unsupported file format: {buffer}")
             return 1
