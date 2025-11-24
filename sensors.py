@@ -30,6 +30,9 @@ class CPU:
         self.cpu_freq = 0.0
         self.cpu_freq_core: List[float] = [0.0 for _ in range(self.cpu_count)]
 
+        self.cpu_temp_count: int = 0
+        self.cpu_temp: List[List[Tuple[str, float]]] = []
+
         self.update()
 
     def update(self) -> None:
@@ -38,12 +41,39 @@ class CPU:
         self.cpu_freq = psutil.cpu_freq(percpu=False).current
         self.cpu_freq_core = [ i.current for i in psutil.cpu_freq(percpu=True) ]
 
+        sys_base = pathlib.Path("/sys/class/hwmon")
+        if not sys_base.exists():
+            return
+        temp_count: int = 0
+        temp_list: List[List[Tuple[str, float]]] = []
+        for h in sys_base.glob("hwmon*/name"):
+            hn = h.read_bytes().decode(encoding="ascii").strip()
+            if hn not in ["k10temp", "coretemp"]:
+                continue
+            # there could be multiple cpu
+            temps: List[Tuple[str, float]] = []
+            for t in h.parent.glob("temp*_label"):
+                tl = t.read_bytes().decode(encoding="ascii").strip()
+                tf = t.parent.absolute() / ( t.name[:-5] + "input" )
+                if not tf.is_file():
+                    continue
+                tt = float(tf.read_bytes().decode(encoding="ascii").strip()) / 1000.0
+                temps.append( (tl, tt) )
+            if len(temps) > 0:
+                temp_count += 1
+                temp_list.append(temps)
+
+        self.cpu_temp_count = temp_count
+        self.cpu_temp = temp_list
+
     def __str__(self) -> str:
         return (f'CPU Cores: {self.cpu_count}\n'
                 f'CPU Usage: {self.cpu_usage}\n'
                 f'CPU Usage Core: {self.cpu_usage_core}\n'
                 f'CPU Frequency: {self.cpu_freq}\n'
-                f'CPU Frequency Core: {self.cpu_freq_core}\n')
+                f'CPU Frequency Core: {self.cpu_freq_core}\n'
+                f'CPU Socket Count: {self.cpu_temp_count}\n'
+                f'CPU Temperatures: {self.cpu_temp}\n')
 
 
 class FAN:
