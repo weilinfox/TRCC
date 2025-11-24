@@ -262,18 +262,18 @@ class SYSTEM:
         self.cpu_count = psutil.cpu_count(logical=True)
 
         self.load_average: Tuple[float, float, float] = (0.0, 0.0, 0.0)
-        self.iowait: float = 0.0
+        self.iowait_percent: float = 0.0
 
         self.update()
 
     def update(self) -> None:
         self.load_average = psutil.getloadavg()
-        self.iowait = psutil.cpu_times(percpu=False).iowait / self.cpu_count
+        self.iowait_percent = psutil.cpu_times(percpu=False).iowait / self.cpu_count / 100.0
 
     def __str__(self) -> str:
         return (f"Boot Time: {self.boot_time}\n"
                 f'Load Average: {self.load_average}\n'
-                f'IOWAIT: {self.iowait}\n')
+                f'IOWAIT: {self.iowait_percent}\n')
 
 
 if __name__ == "__main__":
