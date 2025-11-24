@@ -7,13 +7,14 @@ from typing import Dict, List, Tuple
 class BAT:
     def __init__(self):
         # percent, secs_left, power_plugged
-        self.bat: Tuple[float, int, bool] = (0.0, 0, False)
+        self.bat: Tuple[float, int, bool] = (100.0, 0, True)
 
         self.update()
 
     def update(self) -> None:
         b = psutil.sensors_battery()
-        self.bat = (b.percent, b.secsleft, b.power_plugged)
+        if b is not None:
+            self.bat = (b.percent, b.secsleft, b.power_plugged)
 
     def __str__(self) -> str:
         return f"{self.bat}\n"
@@ -56,12 +57,70 @@ class FAN:
         return f"{self.fans}\n"
 
 
+class MEMORY:
+    def __init__(self):
+        self.free: int = 0
+        self.usage: float = 0.0
+        self.swap_free: int = 0
+        self.swap_usage: float = 0.0
+
+        self.update()
+
+    def update(self) -> None:
+        m = psutil.virtual_memory()
+        self.free = m.free
+        self.usage = m.percent
+
+        m = psutil.swap_memory()
+        self.swap_free = m.free
+        self.swap_usage = m.percent
+
+    def __str__(self) -> str:
+        return (f"Memory Usage: {self.usage}\n"
+                f"Memory Free: {self.free}\n"
+                f"Memory Swap usage: {self.swap_usage}\n"
+                f"Memory Swap free: {self.swap_free}\n")
+
+
+class DISK:
+    def __init__(self):
+        self.bytes_write: int = 0
+        self.bytes_read: int = 0
+        self.bytes_time = time.time()
+        self.bytes_write_old = self.bytes_write
+        self.bytes_read_old = self.bytes_read
+        self.bytes_time_old = self.bytes_time
+
+        self.rate_write = 0.0
+        self.rate_read = 0.0
+
+        self.update()
+
+    def update(self) -> None:
+        c = psutil.disk_io_counters()
+
+        self.bytes_write_old = self.bytes_write
+        self.bytes_read_old = self.bytes_read
+        self.bytes_time_old = self.bytes_time
+
+        self.bytes_write = c.write_bytes
+        self.bytes_read = c.read_bytes
+        self.bytes_time = time.time()
+
+        self.rate_write = (self.bytes_write - self.bytes_write_old) / (self.bytes_time - self.bytes_time_old)
+        self.rate_read = (self.bytes_read - self.bytes_read_old) / (self.bytes_time - self.bytes_time_old)
+
+    def __str__(self) -> str:
+        return (f'Disk Bytes Write: {self.bytes_write}\n'
+                f'Disk Bytes Read: {self.bytes_read}\n'
+                f'Disk Bytes Write Rate: {self.rate_write}\n'
+                f'Disk Bytes Read Rate: {self.rate_read}\n')
+
+
 class NET:
     def __init__(self):
-        c = psutil.net_io_counters()
-
-        self.bytes_sent = c.bytes_sent
-        self.bytes_recv = c.bytes_recv
+        self.bytes_sent: int = 0
+        self.bytes_recv: int = 0
         self.bytes_time = time.time()
         self.bytes_sent_old = self.bytes_sent
         self.bytes_recv_old = self.bytes_recv
@@ -69,6 +128,8 @@ class NET:
 
         self.rate_sent = 0.0
         self.rate_recv = 0.0
+
+        self.update()
 
     def update(self) -> None:
         c = psutil.net_io_counters()
@@ -81,8 +142,8 @@ class NET:
         self.bytes_recv = c.bytes_recv
         self.bytes_time = time.time()
 
-        self.rate_sent = (c.bytes_sent - self.bytes_sent_old) / (self.bytes_time - self.bytes_time_old)
-        self.rate_recv = (c.bytes_recv - self.bytes_recv_old) / (self.bytes_time - self.bytes_time_old)
+        self.rate_sent = (self.bytes_sent - self.bytes_sent_old) / (self.bytes_time - self.bytes_time_old)
+        self.rate_recv = (self.bytes_recv - self.bytes_recv_old) / (self.bytes_time - self.bytes_time_old)
 
     def __str__(self) -> str:
         return (f'Network Bytes Sent: {self.bytes_sent}\n'
@@ -117,11 +178,16 @@ if __name__ == "__main__":
     temp = TEMP()
     fan = FAN()
     bat = BAT()
+    disk = DISK()
+    mem = MEMORY()
     time.sleep(1)
     net.update()
+    disk.update()
 
     print(cpu)
     print(net)
+    print(mem)
+    print(disk)
     print(temp)
     print(bat)
     print(fan)
