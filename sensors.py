@@ -1,3 +1,4 @@
+import atexit
 import pathlib
 import psutil
 import time
@@ -47,6 +48,74 @@ class CPU:
                 f'CPU Usage Core: {self.cpu_usage_core}\n'
                 f'CPU Frequency: {self.cpu_freq}\n'
                 f'CPU Frequency Core: {self.cpu_freq_core}\n')
+
+
+class GPU:
+    def __init__(self):
+        self.nvidia = False
+        self.nvidia_dev_count: int = 0
+        self.nvidia_dev_names: List[str] = []
+        self.nvidia_dev_temps: List[float] = []
+        self.nvidia_dev_usages: List[float] = []
+        self.nvidia_dev_mem_total: List[int] = []
+        self.nvidia_dev_mem_free: List[int] = []
+        self.nvidia_dev_mem_used: List[int] = []
+        self.amd = False
+
+        try:
+            import pynvml
+
+            pynvml.nvmlInit()
+            if pynvml.nvmlDeviceGetCount() > 0:
+                self.nvidia = True
+        except ImportError:
+            pynvml = None
+
+        self.update()
+
+    def update(self) -> None:
+        if self.nvidia:
+            import pynvml
+
+            temps: List[int] = []
+            names: List[str] = []
+            usages: List[int] = []
+            mem_total: List[int] = []
+            mem_free: List[int] = []
+            mem_used: List[int] = []
+            count = pynvml.nvmlDeviceGetCount()
+
+            for d in range(count):
+                h = pynvml.nvmlDeviceGetHandleByIndex(d)
+                names.append(pynvml.nvmlDeviceGetName(h).strip())
+                temps.append(pynvml.nvmlDeviceGetTemperature(h, pynvml.NVML_TEMPERATURE_GPU,))
+                m = pynvml.nvmlDeviceGetMemoryInfo(h)
+                usages.append(pynvml.nvmlDeviceGetUtilizationRates(h).gpu)
+                mem_total.append(m.total)
+                mem_free.append(m.free)
+                mem_used.append(m.used)
+
+            self.nvidia_dev_count = count
+            self.nvidia_dev_names = names
+            self.nvidia_dev_temps = temps
+            self.nvidia_dev_usages = usages
+            self.nvidia_dev_mem_total = mem_total
+            self.nvidia_dev_mem_free = mem_free
+            self.nvidia_dev_mem_used = mem_used
+
+    def clean(self) -> None:
+        if self.nvidia:
+            import pynvml
+            pynvml.nvmlShutdown()
+
+    def __str__(self) -> str:
+        return (f"Nvidia Count {self.nvidia_dev_count}\n"
+                f"Nvidia Names: {self.nvidia_dev_names}\n"
+                f"Nvidia Usages: {self.nvidia_dev_usages}\n"
+                f"Nvidia Temperatures: {self.nvidia_dev_temps}\n"
+                f"Nvidia Memory Total: {self.nvidia_dev_mem_total}\n"
+                f"Nvidia Memory Free: {self.nvidia_dev_mem_free}\n"
+                f"Nvidia Memory Used: {self.nvidia_dev_mem_used}\n")
 
 
 class FAN:
@@ -278,6 +347,8 @@ class SYSTEM:
 
 if __name__ == "__main__":
     cpu = CPU()
+    gpu = GPU()
+    atexit.register(gpu.clean)
     net = NET()
     temp = TEMP()
     fan = FAN()
@@ -290,6 +361,7 @@ if __name__ == "__main__":
     disk.update()
 
     print(cpu)
+    print(gpu)
     print(net)
     print(mem)
     print(disk)
