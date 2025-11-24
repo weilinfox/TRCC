@@ -184,14 +184,14 @@ class TEMP:
         for d in sys_base.iterdir():
             for s in d.glob("device/hwmon*"):
                 temps: List[Tuple[str, float]] = []
-                for t in s.glob("temp*_label"):
+                for t in s.glob("temp*_input"):
                     if not t.is_file():
                         continue
-                    sn = t.read_bytes().decode(encoding="ascii").strip()
-                    fi = t.parent.absolute() / ( t.name[:-5] + "input" )
-                    if not fi.is_file():
-                        continue
-                    si = float(fi.read_bytes().decode(encoding="ascii")) / 1000.0
+                    si = float(t.read_bytes().decode(encoding="ascii").strip()) / 1000.0
+                    fi = t.parent.absolute() / ( t.name[:-5] + "label" )
+                    sn = ""
+                    if fi.is_file():
+                        sn = fi.read_bytes().decode(encoding="ascii").strip()
 
                     temps.append( (sn, si) )
 
@@ -217,12 +217,12 @@ class TEMP:
         for h in sys_base.glob("hwmon*/name"):
             hn = h.read_bytes().decode(encoding="ascii").strip()
             temps: List[Tuple[str, float]] = []
-            for t in h.parent.glob("temp*_label"):
-                tl = t.read_bytes().decode(encoding="ascii").strip()
-                tf = t.parent.absolute() / ( t.name[:-5] + "input" )
-                if not tf.is_file():
-                    continue
-                tt = float(tf.read_bytes().decode(encoding="ascii").strip()) / 1000.0
+            for t in h.parent.glob("temp*_input"):
+                tt = float(t.read_bytes().decode(encoding="ascii").strip()) / 1000.0
+                tf = t.parent.absolute() / ( t.name[:-5] + "label" )
+                tl = ""
+                if tf.is_file():
+                    tl = tf.read_bytes().decode(encoding="ascii").strip()
                 temps.append( (tl, tt) )
             if len(temps) > 0:
                 if hn in ["k10temp", "coretemp"]:
