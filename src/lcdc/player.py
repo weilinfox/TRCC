@@ -412,7 +412,7 @@ def play(path: pathlib.Path) -> int:
                             f"frames={frames_accept + frames_dropped}  "
                             f"frames_dropped={frames_dropped}  "
                             f"frames_accept={frames_accept}  "
-                            f"rate={(frames_accept + frames_dropped) / max(frame_time, 0.1)}  "
+                            f"rate={(frames_accept + frames_dropped - 1) / max(frame_time, 0.1)}  "
                             f"timestamp_base={timestamp_base} timestamp_max={timestamp_max} "
                             f"timestamp_old={timestamp_old} timestamp_loop={timestamp_loop}"
                         )
@@ -444,5 +444,6 @@ if __name__ == "__main__":
     play(pathlib.Path("/home/hachi/Videos/This is what happens when you reply to spam email-James Veitch.mp4"))
     #play(pathlib.Path("/home/hachi/Pictures/450x450.png"))
     #play(pathlib.Path("/home/hachi/Downloads/Cache_-7dbcd720aefeb687..jpg"))
+    #play(pathlib.Path("/home/hachi/Downloads/Cache_-18c899f8541ed9c0.gif"))
     #play(pathlib.Path("/home/hachi/Pictures/0.gif"))
     #play(pathlib.Path("/home/hachi/Videos/a016.mp4"))
