@@ -1,0 +1,5 @@
+# ide
+.idea/
+
+# pycache
+__pycache__/
