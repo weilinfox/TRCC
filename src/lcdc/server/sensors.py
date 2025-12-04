@@ -1,9 +1,14 @@
 import atexit
+import importlib
+import logging
 import pathlib
 import psutil
 import time
 
 from typing import Dict, List, Tuple
+
+
+logger = logging.getLogger(__name__)
 
 
 class BAT:
@@ -52,6 +57,7 @@ class CPU:
 
 class GPU:
     def __init__(self):
+        self.pynvml = None
         self.nvidia = False
         self.nvidia_dev_count: int = 0
         self.nvidia_dev_names: List[str] = []
@@ -63,34 +69,39 @@ class GPU:
         self.amd = False
 
         try:
-            import pynvml
+            self.pynvml = importlib.import_module("pynvml")
 
-            pynvml.nvmlInit()
-            if pynvml.nvmlDeviceGetCount() > 0:
+            self.pynvml.nvmlInit()
+            if self.pynvml.nvmlDeviceGetCount() > 0:
+                logger.info("Find Nvidia devices:")
+                for i in range(self.pynvml.nvmlDeviceGetCount()):
+                    logger.info(f"Card {i}: {self.pynvml.nvmlDeviceGetName(i).strip()}")
                 self.nvidia = True
+            else:
+                logger.warning("No supported Nvidia devices found")
+                self.pynvml.nvmlShutdown()
         except ImportError:
-            pynvml = None
+            logger.warning("Install pynvml for Nvidia GPU support")
+            self.pynvml = None
 
         self.update()
 
     def update(self) -> None:
         if self.nvidia:
-            import pynvml
-
             temps: List[int] = []
             names: List[str] = []
             usages: List[int] = []
             mem_total: List[int] = []
             mem_free: List[int] = []
             mem_used: List[int] = []
-            count = pynvml.nvmlDeviceGetCount()
+            count = self.pynvml.nvmlDeviceGetCount()
 
             for d in range(count):
-                h = pynvml.nvmlDeviceGetHandleByIndex(d)
-                names.append(pynvml.nvmlDeviceGetName(h).strip())
-                temps.append(pynvml.nvmlDeviceGetTemperature(h, pynvml.NVML_TEMPERATURE_GPU,))
-                m = pynvml.nvmlDeviceGetMemoryInfo(h)
-                usages.append(pynvml.nvmlDeviceGetUtilizationRates(h).gpu)
+                h = self.pynvml.nvmlDeviceGetHandleByIndex(d)
+                names.append(self.pynvml.nvmlDeviceGetName(h).strip())
+                temps.append(self.pynvml.nvmlDeviceGetTemperature(h, self.pynvml.NVML_TEMPERATURE_GPU,))
+                m = self.pynvml.nvmlDeviceGetMemoryInfo(h)
+                usages.append(self.pynvml.nvmlDeviceGetUtilizationRates(h).gpu)
                 mem_total.append(m.total)
                 mem_free.append(m.free)
                 mem_used.append(m.used)
@@ -105,8 +116,7 @@ class GPU:
 
     def clean(self) -> None:
         if self.nvidia:
-            import pynvml
-            pynvml.nvmlShutdown()
+            self.pynvml.nvmlShutdown()
 
     def __str__(self) -> str:
         return (f"Nvidia Count {self.nvidia_dev_count}\n"
