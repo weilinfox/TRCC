@@ -23,6 +23,10 @@ def run(__listen_addr: str, __listen_port: int, __debug: bool, __config_dir: pat
     lcdc_sensors = Sensors()
     lcdc_displays = usb_detect()
 
+    if len(lcdc_displays) == 0:
+        logger.fatal("No USB displays detected")
+        return 1
+
     @lcdc_app.route("/lcdc/lcdc", methods=["GET"])
     def lcdc_lcdc():
         return flask.jsonify({
