@@ -11,19 +11,32 @@ import werkzeug
 from .sensors import Sensors
 
 
-lcdc_app = flask.Flask(__name__)
 logger = logging.getLogger(__name__)
-
-@lcdc_app.route("/")
-def index():
-    return 'hello lcdc'
 
 
 def run(__listen_addr: str, __listen_port: int, __debug: bool, __config_dir: pathlib.Path, __data_dir: pathlib.Path) -> int:
 
     logger.info("Starting server")
+    lcdc_app = flask.Flask(__name__)
     lcdc_server = werkzeug.serving.make_server(host=__listen_addr, port=__listen_port, app=lcdc_app, passthrough_errors=not __debug)
     lcdc_sensors = Sensors()
+
+    @lcdc_app.route("/lcdc/lcdc", methods=["GET"])
+    def lcdc_lcdc():
+        return flask.jsonify({
+            "name": "LCDC",
+            "version": "0.0.0",
+        })
+
+    @lcdc_app.route("/lcdc/sensors", methods=["GET"])
+    def lcdc_sensors():
+        sensors = lcdc_sensors.format(True, True)
+        return flask.jsonify({
+            k: {
+                "format_str": v,
+                "desc": sensors[1][k],
+            } for k, v in sensors[0].items()
+        })
 
     def signal_handler(sig, frame):
         logger.info(f"Signal {sig} detected")
