@@ -75,7 +75,7 @@ class GPU:
             if self.pynvml.nvmlDeviceGetCount() > 0:
                 logger.info("Find Nvidia devices:")
                 for i in range(self.pynvml.nvmlDeviceGetCount()):
-                    logger.info(f"Card {i}: {self.pynvml.nvmlDeviceGetName(i).strip()}")
+                    logger.info(f"Card {i}: {self.pynvml.nvmlDeviceGetName(self.pynvml.nvmlDeviceGetHandleByIndex(i)).strip()}")
                 self.nvidia = True
             else:
                 logger.warning("No supported Nvidia devices found")
@@ -241,88 +241,156 @@ class TEMP:
         # (name, label, current)
         self.disk_count: int = 0
         self.disk_names: List[str] = []
+        self.disk_paths: List[List[pathlib.Path]] = []
         self.disk_temps: List[List[Tuple[str, float]]] = []
         self.cpu_count: int = 0
         self.cpu_names: List[str] = []
+        self.cpu_paths: List[List[pathlib.Path]] = []
         self.cpu_temps: List[Tuple[str, float]] = []
         self.misc_count: int = 0
         self.misc_names: List[str] = []
+        self.misc_paths: List[List[pathlib.Path]] = []
         self.misc_temps: List[Tuple[str, float]] = []
 
+        self.detect()
         self.update()
 
     def update(self) -> None:
 
+        temp_list: List[List[Tuple[str, float]]] = []
+        detect_flag = False
+
+        def _sensor_read(_p: pathlib.Path) -> Tuple[str, float]:
+            si = float(p.read_bytes().decode(encoding="ascii").strip()) / 1000.0
+            fi = p.parent.absolute() / (p.name[:-5] + "label")
+            sn = ""
+            if fi.is_file():
+                sn = fi.read_bytes().decode(encoding="ascii").strip()
+
+            return sn, si
+
+        # disk temperature sensors
+        for pl in self.disk_paths:
+            temps: List[Tuple[str, float]] = []
+            for p in pl:
+                if not p.exists():
+                    logger.debug(f"Disk temperature sensor {p} disappeared, set redetect flag")
+                    detect_flag = True
+                    continue
+                temps.append(_sensor_read(p))
+
+            if len(temps) > 0:
+                temp_list.append(temps)
+
+        self.disk_temps = temp_list
+
+        # cpu temperature sensors
+        temp_list = []
+        for pl in self.cpu_paths:
+            temps: List[Tuple[str, float]] = []
+            for p in pl:
+                if not p.exists():
+                    logger.debug(f"CPU temperature sensor {p} disappeared, set redetect flag")
+                    detect_flag = True
+                    continue
+                temps.append(_sensor_read(p))
+
+            if len(temps) > 0:
+                temp_list.append(temps)
+
+        self.cpu_temps = temp_list
+
+        # misc temperature sensors
+        temp_list = []
+        for pl in self.misc_paths:
+            temps: List[Tuple[str, float]] = []
+            for p in pl:
+                if not p.exists():
+                    logger.debug(f"Misc temperature sensor {p} disappeared, set redetect flag")
+                    detect_flag = True
+                    continue
+                temps.append(_sensor_read(p))
+
+            if len(temps) > 0:
+                temp_list.append(temps)
+
+        self.misc_temps = temp_list
+
+        if detect_flag:
+            logger.debug(f"Temperature sensor redetect")
+            self.detect()
+
+    def detect(self) -> None:
+
         temp_count: int = 0
         dev_names: List[str] = []
-        temp_list: List[List[Tuple[str, float]]] = []
+        path_list: List[List[pathlib.Path]] = []
 
         # disk temperature sensors
         sys_base = pathlib.Path("/sys/block")
         if not sys_base.exists():
             return
+        logger.debug(f"Entering /sys/block")
         for d in sys_base.iterdir():
             for s in d.glob("device/hwmon*"):
-                temps: List[Tuple[str, float]] = []
+                paths: List[pathlib.Path] = []
                 for t in s.glob("temp*_input"):
                     if not t.is_file():
                         continue
-                    si = float(t.read_bytes().decode(encoding="ascii").strip()) / 1000.0
-                    fi = t.parent.absolute() / ( t.name[:-5] + "label" )
-                    sn = ""
-                    if fi.is_file():
-                        sn = fi.read_bytes().decode(encoding="ascii").strip()
+                    logger.debug(f"Find disk sensor {t}")
+                    paths.append(t)
 
-                    temps.append( (sn, si) )
-
-                if len(temps) > 0:
+                if len(paths) > 0:
+                    logger.debug(f"Record disk sensors above")
                     temp_count += 1
                     dev_names.append(d.name)
-                    temp_list.append(temps)
+                    path_list.append(paths)
 
         self.disk_count = temp_count
         self.disk_names = dev_names
-        self.disk_temps = temp_list
+        self.disk_paths = path_list
 
         # hardware temperature sensors
         temp_count = 0
         dev_names = []
-        temp_list = []
+        path_list = []
         cpu_count: int = 0
         cpu_names: List[str] = []
-        cpu_list: List[List[Tuple[str, float]]] = []
+        cpu_list: List[List[pathlib.Path]] = []
         sys_base = pathlib.Path("/sys/class/hwmon")
+        logger.debug(f"Entering /sys/class/hwmon")
         if not sys_base.exists():
             return
         for h in sys_base.glob("hwmon*/name"):
             hn = h.read_bytes().decode(encoding="ascii").strip()
-            temps: List[Tuple[str, float]] = []
+            paths: List[pathlib.Path] = []
             for t in h.parent.glob("temp*_input"):
-                tt = float(t.read_bytes().decode(encoding="ascii").strip()) / 1000.0
-                tf = t.parent.absolute() / ( t.name[:-5] + "label" )
-                tl = ""
-                if tf.is_file():
-                    tl = tf.read_bytes().decode(encoding="ascii").strip()
-                temps.append( (tl, tt) )
-            if len(temps) > 0:
+                if not t.is_file():
+                    continue
+                logger.debug(f"Find sensor {t}")
+                paths.append(t)
+            if len(paths) > 0:
                 if hn in ["k10temp", "coretemp"]:
                     # there could be multiple cpu
+                    logger.debug(f"Record cpu sensors above")
                     cpu_count += 1
                     cpu_names.append(hn)
-                    cpu_list.append(temps)
+                    cpu_list.append(paths)
                 elif hn in ["nvme"]:
-                    pass
+                    # skip already detected disks
+                    logger.debug(f"Skip disk sensors above")
                 else:
+                    logger.debug(f"Record misc sensors above")
                     temp_count += 1
                     dev_names.append(hn)
-                    temp_list.append(temps)
+                    path_list.append(paths)
 
         self.cpu_count = cpu_count
         self.cpu_names = cpu_names
-        self.cpu_temps = cpu_list
+        self.cpu_paths = cpu_list
         self.misc_count = temp_count
         self.misc_names = dev_names
-        self.misc_temps = temp_list
+        self.misc_paths = path_list
 
     def __str__(self) -> str:
         return (f"CPU Count {self.cpu_count}\n"
