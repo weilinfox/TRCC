@@ -17,15 +17,16 @@ logger = logging.getLogger(__name__)
 
 def run(__listen_addr: str, __listen_port: int, __debug: bool, __config_dir: pathlib.Path, __data_dir: pathlib.Path) -> int:
 
+    logger.info(f"Detecting displays")
+    lcdc_displays = usb_detect()
+    if len(lcdc_displays) == 0:
+        logger.fatal("No USB displays detected")
+        return 1
+
     logger.info("Starting server")
     lcdc_app = flask.Flask(__name__)
     lcdc_server = werkzeug.serving.make_server(host=__listen_addr, port=__listen_port, app=lcdc_app, passthrough_errors=not __debug)
     lcdc_sensors = Sensors()
-    lcdc_displays = usb_detect()
-
-    if len(lcdc_displays) == 0:
-        logger.fatal("No USB displays detected")
-        return 1
 
     @lcdc_app.route("/lcdc/lcdc", methods=["GET"])
     def lcdc_lcdc():

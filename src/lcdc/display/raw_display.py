@@ -18,7 +18,7 @@ class UsbRaw(USB):
 
         self._dev = usb.core.find(idVendor=_vendor, idProduct=_product)
         if self._dev is None:
-            self._ready = False
+            raise AssertionError(f"USB device {_vendor:04x}:{_product:04x} not found")
         if self._dev.bNumConfigurations == 0:
             raise AssertionError(f"USB device {_vendor:04x}:{_product:04x} has no configurations")
         elif self._dev.bNumConfigurations > 1:
