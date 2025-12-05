@@ -9,6 +9,7 @@ import werkzeug
 
 
 from .sensors import Sensors
+from ..display.usb_display import usb_detect
 
 
 logger = logging.getLogger(__name__)
@@ -20,6 +21,7 @@ def run(__listen_addr: str, __listen_port: int, __debug: bool, __config_dir: pat
     lcdc_app = flask.Flask(__name__)
     lcdc_server = werkzeug.serving.make_server(host=__listen_addr, port=__listen_port, app=lcdc_app, passthrough_errors=not __debug)
     lcdc_sensors = Sensors()
+    lcdc_displays = usb_detect()
 
     @lcdc_app.route("/lcdc/lcdc", methods=["GET"])
     def lcdc_lcdc():
