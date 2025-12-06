@@ -1,5 +1,6 @@
 
 from PIL import Image
+from typing import List, Tuple
 
 
 class USB:
@@ -31,4 +32,7 @@ class Display:
         raise NotImplementedError
 
     def close(self) -> None:
+        raise NotImplementedError
+
+    def resolutions(self) -> List[Tuple[int, int]]:
         raise NotImplementedError

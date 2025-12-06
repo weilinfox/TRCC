@@ -1,3 +1,4 @@
+from typing import List, Tuple
 
 import hid
 import io
@@ -110,3 +111,6 @@ class Display04165302(HidDisplay):
                 )
 
         return self._device.write(data)
+
+    def resolutions(self) -> List[Tuple[int, int]]:
+        return [(1280, 480), ]

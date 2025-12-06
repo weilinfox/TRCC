@@ -4,6 +4,7 @@ import logging
 import usb
 
 from PIL import Image
+from typing import List, Tuple
 
 from .display import Display, USB
 
@@ -127,3 +128,6 @@ class Display87ad70db(RawDisplay):
                 )
 
         return self._device.write(data)
+
+    def resolutions(self) -> List[Tuple[int, int]]:
+        return [(480, 480), (320, 320)]
