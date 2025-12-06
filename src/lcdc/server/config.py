@@ -28,7 +28,7 @@ class Config:
             if not cd.exists():
                 cd.mkdir()
 
-            c = Canvas(d, Theme(cd))
+            c = Canvas(d, Theme(cd, d.resolutions()[0][0], d.resolutions()[0][1]))
             ret.append(c)
 
             self.canvas.append((d, c))

@@ -13,10 +13,13 @@ logger = logging.getLogger(__name__)
 
 
 class Theme:
-    def __init__(self, _path: pathlib.Path):
+    def __init__(self, _config_path: pathlib.Path, _default_width: int, _default_height: int):
         # use json for not recommended to edit manually
         self._config_file = "config.json"
-        self._config_path: pathlib.Path = _path
+        self._config_path: pathlib.Path = _config_path
+
+        self._default_width = _default_width
+        self._default_height = _default_height
 
         self.background = self._config_path / "demo.jpg"
         self.mask = self._config_path / "mask.png"
@@ -55,8 +58,8 @@ class Theme:
         self.mask_img = Image.open(self.mask).convert("RGBA")
 
     def _init_theme(self):
-        self._init_ebu_background(480, 480)
-        self._init_fade_mask(480, 480)
+        self._init_ebu_background(self._default_width, self._default_height)
+        self._init_fade_mask(self._default_width, self._default_height)
         self.save_config()
 
     def _init_ebu_background(self, _width: int, _height: int):
