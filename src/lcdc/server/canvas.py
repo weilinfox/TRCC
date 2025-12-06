@@ -199,11 +199,14 @@ class Canvas:
                             buf_use = False
                             buf_video.clear()
                             buf_audio.clear()
+                            logger.info(
+                                f"Display {self._display_info[0]:04x}:{self._display_info[1]:04x}: "
+                                f"Theme background contains too much frames to buffer")
 
                     if buf_use:
-                        logger.debug(
+                        logger.info(
                             f"Display {self._display_info[0]:04x}:{self._display_info[1]:04x}: "
-                            f"Theme background buf_audio length {len(buf_audio)}, buf_video length {len(buf_video)}")
+                            f"Theme background buffer length audio {len(buf_audio)} video {len(buf_video)}")
                         buf_ready = True
 
                 else:
@@ -339,7 +342,7 @@ class Canvas:
                             # accept this frame
                             frames_accept += 1
 
-                            self._display.print(frame)
+                            self._display.print(frame.to_image())
 
                             logger.debug(f"Display {self._display_info[0]:04x}:{self._display_info[1]:04x}: "
                                          f"Frame accepted t={frame_time:7.3f}s  "

@@ -27,7 +27,7 @@ class Theme:
     def read_config(self):
         fp = self._config_path / self._config_file
         try:
-            with open(fp, "rw") as f:
+            with open(fp, "r+") as f:
                 c = json.load(f)
                 self.background = pathlib.Path(c["background"])
                 self.mask = pathlib.Path(c["mask"])
@@ -94,9 +94,9 @@ class Theme:
     def save_config(self):
         fp = self._config_path / self._config_file
         d = {
-            "background": self.background,
-            "mask": self.mask,
+            "background": str(self.background.absolute()),
+            "mask": str(self.mask.absolute()),
             "widgets": self.widgets,
         }
-        with open(fp, "rw") as f:
+        with open(fp, "w+") as f:
             f.write(json.dumps(d, ensure_ascii=False, indent=4))

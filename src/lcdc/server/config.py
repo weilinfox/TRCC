@@ -25,7 +25,7 @@ class Config:
             v, p = d.device()
             cd = self._config_dir / f"{v:04x}:{p:04x}"
 
-            if cd.exists():
+            if not cd.exists():
                 cd.mkdir()
 
             c = Canvas(d, Theme(cd))
