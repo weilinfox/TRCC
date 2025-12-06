@@ -20,6 +20,7 @@ class Theme:
 
         self.background = self._config_path / "demo.jpg"
         self.mask = self._config_path / "mask.png"
+        self.mask_img = None
         self.widgets: List[Dict] = []
 
         self.read_config()
@@ -50,6 +51,8 @@ class Theme:
                 logger.warning(f"Old theme config rename to {ofp}")
                 fp.rename(ofp)
             self._init_theme()
+
+        self.mask_img = Image.open(self.mask).convert("RGBA")
 
     def _init_theme(self):
         self._init_ebu_background(480, 480)
@@ -90,6 +93,13 @@ class Theme:
                 p[x, y] = (255, 255, 255, alpha)
 
         img.save(self.mask, format="PNG")
+
+    def blend(self, _background: Image) -> Image:
+        base = _background.convert("RGBA")
+
+        if self.mask_img.size != base.size:
+            self.mask_img = self.mask_img.resize(base.size, Image.BILINEAR)
+        return Image.alpha_composite(base, self.mask_img)
 
     def save_config(self):
         fp = self._config_path / self._config_file

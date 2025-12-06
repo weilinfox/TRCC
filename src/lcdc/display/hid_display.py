@@ -105,7 +105,7 @@ class Display04165302(HidDisplay):
 
     def print(self, _img: Image) -> int:
         _buf = io.BytesIO()
-        _img.save(_buf, format="JPEG", progressive=False, optimize=False, )
+        _img.convert("RGB").save(_buf, format="JPEG", progressive=False, optimize=False, )
 
         # URB_BUIK out
         # da db dc dd 02 00 00 00 00 05 e0 01 02 00 00 00

@@ -114,7 +114,7 @@ class Display87ad70db(RawDisplay):
         # baseline DCT only
         # no optimized Huffman
         _buf = io.BytesIO()
-        _img.save(_buf, format="JPEG", progressive=False, optimize=False, )
+        _img.convert("RGB").save(_buf, format="JPEG", progressive=False, optimize=False, )
 
         # URB_BUIK out
         # 12 34 56 78 02 00 00 00 e0 01 00 00 e0 01 00 00
