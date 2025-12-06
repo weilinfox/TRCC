@@ -5,7 +5,7 @@ import pathlib
 import random
 import string
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 from typing import Dict, List
 
 
@@ -24,7 +24,20 @@ class Theme:
         self.background = self._config_path / "demo.jpg"
         self.mask = self._config_path / "mask.png"
         self.mask_img = None
-        self.widgets: List[Dict] = []
+        self.widgets: List[Dict] = [
+            {
+                "text": "CPU",
+                "color": (255, 0, 0, 255),
+                "xy": (100, 100),
+                "size": 50,
+            },
+            {
+                "widget": "CpuFreqMax",
+                "color": (0, 0, 255, 255),
+                "xy": (100, 200),
+                "size": 50,
+            }
+        ]
 
         self.read_config()
 
@@ -102,12 +115,27 @@ class Theme:
 
         img.save(self.mask, format="PNG")
 
-    def blend(self, _background: Image) -> Image:
+    def blend(self, _background: Image, _sensor_data: Dict) -> Image:
         base = _background.convert("RGBA")
 
         if self.mask_img.size != base.size:
             self.mask_img = self.mask_img.resize(base.size, Image.BILINEAR)
-        return Image.alpha_composite(base, self.mask_img)
+        img = Image.alpha_composite(base, self.mask_img)
+
+        # widgets
+        draw = ImageDraw.Draw(img)
+        for w in self.widgets:
+            if "text" in w.keys():
+                text = w["text"]
+            else:
+                text = _sensor_data.get(w["widget"], "NULL")
+            xy = tuple(w.get("xy", (50, 50)))
+            color = tuple(w.get("color", (0, 0, 0, 255)))
+            size = w.get("size", 10)
+            font = ImageFont.load_default(size)
+            draw.text(xy, text, color, font)
+
+        return img
 
     def save_config(self):
         fp = self._config_path / self._config_file

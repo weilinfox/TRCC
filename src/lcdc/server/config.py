@@ -3,6 +3,7 @@ import pathlib
 from typing import List, Tuple
 
 from .canvas import Canvas
+from .sensors import Sensors
 from ..display.usb_display import Display
 from ..theme.theme import Theme
 
@@ -19,7 +20,7 @@ class Config:
 
         self.canvas: List[Tuple[Display, Canvas]] = []
 
-    def setup_canvas(self, __displays: List[Display]) -> List[Canvas]:
+    def setup_canvas(self, __displays: List[Display], __sensors: Sensors) -> List[Canvas]:
         ret = []
         for d in __displays:
             v, p = d.device()
@@ -28,7 +29,7 @@ class Config:
             if not cd.exists():
                 cd.mkdir()
 
-            c = Canvas(d, Theme(cd, d.resolutions()[0][0], d.resolutions()[0][1]))
+            c = Canvas(d, Theme(cd, d.resolutions()[0][0], d.resolutions()[0][1]), __sensors)
             ret.append(c)
 
             self.canvas.append((d, c))

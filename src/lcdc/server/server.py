@@ -32,7 +32,7 @@ def run(__listen_addr: str, __listen_port: int, __debug: bool, __config_dir: pat
 
     # main process
     lcdc_configs = Config(__config_dir, __data_dir)
-    lcdc_canvas = lcdc_configs.setup_canvas(lcdc_displays)
+    lcdc_canvas = lcdc_configs.setup_canvas(lcdc_displays, lcdc_sensors)
 
     lcdc_canvas_paints = []
     for c in lcdc_canvas:

@@ -8,6 +8,7 @@ import threading
 
 from typing import List, Union
 
+from .sensors import Sensors
 from ..display.usb_display import Display
 from ..theme.theme import Theme
 
@@ -61,10 +62,11 @@ class WallClock(Clock):
 
 
 class Canvas:
-    def __init__(self, _display: Display, _theme: Theme):
+    def __init__(self, _display: Display, _theme: Theme, _sensors: Sensors):
         self._display = _display
         self._display_info = _display.device()
         self._theme = _theme
+        self._sensors = _sensors
 
         self.stop_env = threading.Event()
 
@@ -360,7 +362,7 @@ class Canvas:
                             # accept this frame
                             frames_accept += 1
 
-                            self._display.print(self._theme.blend(frame.to_image()))
+                            self._display.print(self._theme.blend(frame.to_image(), self._sensors.format(True, True)[0]))
 
                             logger.debug(f"Display {self._display_info[0]:04x}:{self._display_info[1]:04x}: "
                                          f"Frame accepted t={frame_time:.3f}s  "
