@@ -5,9 +5,10 @@ import os
 import pathlib
 import signal
 import sys
+import threading
 import werkzeug
 
-
+from .config import Config
 from .sensors import Sensors
 from ..display.usb_display import usb_detect
 
@@ -28,6 +29,15 @@ def run(__listen_addr: str, __listen_port: int, __debug: bool, __config_dir: pat
     lcdc_server = werkzeug.serving.make_server(host=__listen_addr, port=__listen_port, app=lcdc_app, passthrough_errors=not __debug)
     lcdc_sensors = Sensors()
 
+    # main process
+    lcdc_configs = Config(__config_dir, __data_dir)
+    lcdc_canvas = lcdc_configs.setup_canvas(lcdc_displays)
+
+    lcdc_canvas_paints = []
+    for c in lcdc_canvas:
+        lcdc_canvas_paints.append(threading.Thread(target=lambda: c.paint(), daemon=True))
+
+    # flask routes
     @lcdc_app.route("/lcdc/lcdc", methods=["GET"])
     def route_lcdc_lcdc():
         return flask.jsonify({
@@ -45,9 +55,12 @@ def run(__listen_addr: str, __listen_port: int, __debug: bool, __config_dir: pat
             } for k, v in sensors[0].items()
         })
 
+    # SIGINT handler
     def signal_handler(sig, frame):
         logger.info(f"Signal {sig} detected")
         lcdc_server.server_close()
+        for _c in lcdc_canvas:
+            _c.stop()
         lcdc_sensors.clean()
         if __listen_port == 0:
             os.remove(__listen_addr[7:])
@@ -57,6 +70,8 @@ def run(__listen_addr: str, __listen_port: int, __debug: bool, __config_dir: pat
     signal.signal(signal.SIGINT, signal_handler)
 
     logger.warning("Ctrl+C to stop server")
+    for _t in lcdc_canvas_paints:
+        _t.start()
     lcdc_server.serve_forever()
 
     return 0
