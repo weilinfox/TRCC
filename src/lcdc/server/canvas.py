@@ -63,6 +63,7 @@ class WallClock(Clock):
 class Canvas:
     def __init__(self, _display: Display, _theme: Theme):
         self._display = _display
+        self._display_info = _display.device()
         self._theme = _theme
 
         self.stop_env = threading.Event()
@@ -92,29 +93,34 @@ class Canvas:
         try:
             container_t = av.open(self._theme.background)
         except Exception as e:
-            logger.error(e)
-            return 1
+            raise e
         else:
             container_format = container_t.format.name
             astream = next((s for s in container_t.streams if s.type == "audio"), None)
             vstream = next((s for s in container_t.streams if s.type == "video"), None)
             container_t.close()
 
-            logger.warning(f"Container {container_format}")
+            logger.debug(f"Display {self._display_info[0]:04x}:{self._display_info[1]:04x}: "
+                         f"Theme background stream container detected {container_format}")
 
             if vstream:
-                logger.warning("Found video stream")
+                logger.info(f"Display {self._display_info[0]:04x}:{self._display_info[1]:04x}: "
+                            f"Theme background video stream found")
                 video_format = vstream.format.name
                 video_height = vstream.height
                 video_width = vstream.width
                 video_framerate = vstream.average_rate
-                logger.warning(f"Video stream {video_format}, {video_width} x {video_height} {video_framerate} fps")
+                logger.info(
+                    f"Display {self._display_info[0]:04x}:{self._display_info[1]:04x}: "
+                    f"Theme background video stream {video_format}, "
+                    f"{video_width} x {video_height} {video_framerate} fps")
             else:
-                logger.error("No video stream found")
-                return 1
+                raise AssertionError(f"Display {self._display_info[0]:04x}:{self._display_info[1]:04x}: "
+                                     f"Theme background has no video stream")
 
             if astream:
-                logger.warning("Found audio stream")
+                logger.info(f"Display {self._display_info[0]:04x}:{self._display_info[1]:04x}: "
+                            f"Theme background audio stream found")
                 audio_flag = True
                 audio_format = astream.format.name
                 audio_layout = astream.layout.name
@@ -122,7 +128,8 @@ class Canvas:
                 audio_bit_rate = astream.bit_rate
                 audio_channel = astream.channels
                 player_clock = AudioClock(audio_sample_rate)
-                logger.warning(
+                logger.info(
+                    f"Display {self._display_info[0]:04x}:{self._display_info[1]:04x}: "
                     f"Audio stream {audio_format}, {audio_sample_rate} Hz, {audio_channel} CH, {audio_bit_rate} bps")
             else:
                 player_clock = WallClock()
@@ -139,7 +146,8 @@ class Canvas:
             buf_use = True
             buf_ready = False
 
-            logger.warning("Demux started")
+            logger.debug(f"Display {self._display_info[0]:04x}:{self._display_info[1]:04x}: "
+                         f"Theme background demux started")
 
             while not self.stop_env.is_set():
 
@@ -193,7 +201,9 @@ class Canvas:
                             buf_audio.clear()
 
                     if buf_use:
-                        logger.warning(f"buf_audio length {len(buf_audio)}, buf_video length {len(buf_video)}")
+                        logger.debug(
+                            f"Display {self._display_info[0]:04x}:{self._display_info[1]:04x}: "
+                            f"Theme background buf_audio length {len(buf_audio)}, buf_video length {len(buf_video)}")
                         buf_ready = True
 
                 else:
@@ -209,11 +219,13 @@ class Canvas:
                             video_q.put(buf_video[i])
                         buf_video_index = 0 if buf_video_index + cap >= len(buf_video) else buf_video_index + cap
 
-            logger.warning("Demux stopped")
+            logger.debug(f"Display {self._display_info[0]:04x}:{self._display_info[1]:04x}: "
+                         f"Theme background demux stopped")
 
         def audio_thread():
             if not audio_flag:
-                logger.warning("No audio output")
+                logger.debug(f"Display {self._display_info[0]:04x}:{self._display_info[1]:04x}: "
+                             f"Quit theme background audio thread for no audio output")
                 return
 
             pa = pyaudio.PyAudio()
@@ -227,13 +239,18 @@ class Canvas:
             )
             # convert to int16 interleaved(packed) stereo
             resampler = av.AudioResampler(format="s16", layout="stereo", rate=audio_sample_rate)
-            logger.warning("Audio output started")
+            logger.info(f"Display {self._display_info[0]:04x}:{self._display_info[1]:04x}: "
+                        f"Theme background audio output started")
 
             try:
                 try:
                     latency_sec = stream.get_output_latency()
-                    logger.warning(f"Audio output latency {latency_sec:.3f} ms")
-                except Exception:
+                    logger.debug(f"Display {self._display_info[0]:04x}:{self._display_info[1]:04x}: "
+                                 f"Audio output latency {latency_sec:.3f} ms")
+                except Exception as _e:
+                    logger.debug(_e)
+                    logger.debug(f"Display {self._display_info[0]:04x}:{self._display_info[1]:04x}: "
+                                 f"Audio card does not support output latency")
                     latency_sec = 0.0
 
                 player_clock.set_latency(latency_sec)
@@ -242,7 +259,8 @@ class Canvas:
                     try:
                         frame = audio_q.get(timeout=0.1)
                     except queue.Empty:
-                        logger.warning("Audio queue is empty")
+                        logger.debug(f"Display {self._display_info[0]:04x}:{self._display_info[1]:04x}: "
+                                     f"Theme background audio queue is empty")
                     else:
                         if frame is None:
                             break
@@ -260,7 +278,8 @@ class Canvas:
                 stream.close()
                 pa.terminate()
                 audio_q.shutdown()
-                logger.warning("Audio output stopped")
+                logger.info(f"Display {self._display_info[0]:04x}:{self._display_info[1]:04x}: "
+                            f"Theme background audio output stopped")
 
         def video_thread():
             timestamp_loop = -1
@@ -273,7 +292,8 @@ class Canvas:
             sleep_quantum = 0.002
             drop_threshold = - 0.8 / video_framerate
 
-            logger.warning("Video output started")
+            logger.info(f"Display {self._display_info[0]:04x}:{self._display_info[1]:04x}: "
+                        f"Theme background video output started")
 
             player_clock.reset()
 
@@ -281,7 +301,8 @@ class Canvas:
                 try:
                     frame = video_q.get(timeout=0.1)
                 except queue.Empty:
-                    logger.warning("Video queue is empty")
+                    logger.debug(f"Display {self._display_info[0]:04x}:{self._display_info[1]:04x}: "
+                                 f"Theme background video queue is empty")
                 else:
                     if frame is None:
                         break
@@ -309,42 +330,40 @@ class Canvas:
                             continue
                         elif delta < drop_threshold:
                             frames_dropped += 1
-                            logger.warning(f"Frame dropped {delta} "
-                                           f"timestamp_base={timestamp_base} timestamp_max={timestamp_max} "
-                                           f"timestamp_old={timestamp_old} timestamp_loop={timestamp_loop}"
-                                           )
+                            logger.debug(f"Display {self._display_info[0]:04x}:{self._display_info[1]:04x}: "
+                                         f"Frame dropped {delta} "
+                                         f"timestamp_base={timestamp_base} timestamp_max={timestamp_max} "
+                                         f"timestamp_old={timestamp_old} timestamp_loop={timestamp_loop}"
+                                         )
                         else:
                             # accept this frame
                             frames_accept += 1
 
                             self._display.print(frame)
 
-                            logger.warning(
-                                f"[VIDEO] t={frame_time:7.3f}s  "
-                                f"size={frame.width}x{frame.height}  "
-                                f"frames={frames_accept + frames_dropped}  "
-                                f"frames_dropped={frames_dropped}  "
-                                f"frames_accept={frames_accept}  "
-                                f"rate={(frames_accept + frames_dropped - 1) / max(frame_time, 0.1)}  "
-                                f"timestamp_base={timestamp_base} timestamp_max={timestamp_max} "
-                                f"timestamp_old={timestamp_old} timestamp_loop={timestamp_loop}"
-                            )
+                            logger.debug(f"Display {self._display_info[0]:04x}:{self._display_info[1]:04x}: "
+                                         f"Frame accepted t={frame_time:7.3f}s  "
+                                         f"size={frame.width}x{frame.height}  "
+                                         f"frames={frames_accept + frames_dropped}  "
+                                         f"frames_dropped={frames_dropped}  "
+                                         f"frames_accept={frames_accept}  "
+                                         f"rate={(frames_accept + frames_dropped - 1) / max(frame_time, 0.1)}  "
+                                         f"timestamp_base={timestamp_base} timestamp_max={timestamp_max} "
+                                         f"timestamp_old={timestamp_old} timestamp_loop={timestamp_loop}"
+                                         )
                         break
 
             video_q.shutdown()
-            logger.warning("Video output stopped")
+            logger.info(f"Display {self._display_info[0]:04x}:{self._display_info[1]:04x}: "
+                        f"Theme background video output stopped")
 
-        t_demux = threading.Thread(target=demux_thread, daemon=True)
         t_audio = threading.Thread(target=audio_thread, daemon=True)
         t_video = threading.Thread(target=video_thread, daemon=True)
 
-        t_demux.start()
         t_audio.start()
         t_video.start()
 
-        t_demux.join()
-        t_audio.join()
-        t_video.join()
+        demux_thread()
 
         return 0
 
