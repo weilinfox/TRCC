@@ -300,6 +300,10 @@ class Canvas:
 
             player_clock.reset()
 
+            # cpu not fast enough
+            drop_frames = 0
+            dropped_frames = 0
+
             while not self.stop_env.is_set():
                 try:
                     frame = video_q.get(timeout=0.1)
@@ -325,6 +329,20 @@ class Canvas:
                     if frame_time == 0.0 and frames_accept + frames_dropped > 0:
                         frame_time = (frames_accept + frames_dropped) / video_framerate
 
+                    # cpu too slow
+                    if drop_frames == 0 and frames_dropped > frames_accept:
+                        # <= 8 fps
+                        drop_frames = video_framerate // 8
+                        drop_threshold *= float(drop_frames) + 1.0
+                    if drop_frames > 0:
+                        if dropped_frames >= drop_frames:
+                            dropped_frames = 0
+                        else:
+                            # drop this frame
+                            dropped_frames += 1
+                            frames_dropped += 1
+                            continue
+
                     while not self.stop_env.is_set():
                         delta = frame_time - player_clock.now()
 
@@ -345,12 +363,13 @@ class Canvas:
                             self._display.print(self._theme.blend(frame.to_image()))
 
                             logger.debug(f"Display {self._display_info[0]:04x}:{self._display_info[1]:04x}: "
-                                         f"Frame accepted t={frame_time:7.3f}s  "
+                                         f"Frame accepted t={frame_time:.3f}s  "
                                          f"size={frame.width}x{frame.height}  "
                                          f"frames={frames_accept + frames_dropped}  "
                                          f"frames_dropped={frames_dropped}  "
                                          f"frames_accept={frames_accept}  "
-                                         f"rate={(frames_accept + frames_dropped - 1) / max(frame_time, 0.1)}  "
+                                         f"rate={(frames_accept + frames_dropped - 1) / max(frame_time, 0.1):.2f}  "
+                                         f"rate accept={(frames_accept - 1) / max(frame_time, 0.1):.2f}  "
                                          f"timestamp_base={timestamp_base} timestamp_max={timestamp_max} "
                                          f"timestamp_old={timestamp_old} timestamp_loop={timestamp_loop}"
                                          )
