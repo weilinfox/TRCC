@@ -16,6 +16,9 @@ class USB:
     def close(self) -> None:
         raise NotImplementedError
 
+    def device(self) -> Tuple[int, int]:
+        raise NotImplementedError
+
 
 class Display:
     def ready(self) -> bool:
@@ -35,4 +38,7 @@ class Display:
         raise NotImplementedError
 
     def resolutions(self) -> List[Tuple[int, int]]:
+        raise NotImplementedError
+
+    def device(self) -> Tuple[int, int]:
         raise NotImplementedError

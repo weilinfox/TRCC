@@ -10,7 +10,10 @@ _USB_ID_SUPPORTED = {
     (0x87ad, 0x70db): lambda: Display87ad70db(),
 }
 
-def usb_detect() -> List[Union[Display87ad70db, Display04165302]]:
+Display = Union[Display87ad70db, Display04165302]
+
+
+def usb_detect() -> List[Display]:
 
     dev_list = []
     busses = usb.busses()

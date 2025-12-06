@@ -51,6 +51,9 @@ class UsbHid(USB):
     def read(self) -> bytes:
         return self._reports_read(10)
 
+    def device(self) -> Tuple[int, int]:
+        return self._id_vendor, self._id_product
+
     def close(self) -> None:
         self._dev.close()
 
@@ -71,6 +74,9 @@ class HidDisplay(Display):
 
     def close(self) -> None:
         self._device.close()
+
+    def device(self) -> Tuple[int, int]:
+        return self._device.device()
 
 
 class Display04165302(HidDisplay):

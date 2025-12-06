@@ -51,6 +51,9 @@ class UsbRaw(USB):
         # length, timeout
         return bytes(self._ep_in.read(512, 10))
 
+    def device(self) -> Tuple[int, int]:
+        return self._id_vendor, self._id_product
+
     def close(self) -> None:
         pass
 
@@ -71,6 +74,9 @@ class RawDisplay(Display):
 
     def close(self) -> None:
         self._device.close()
+
+    def device(self) -> Tuple[int, int]:
+        return self._device.device()
 
 
 class Display87ad70db(RawDisplay):
