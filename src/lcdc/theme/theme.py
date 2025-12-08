@@ -136,7 +136,7 @@ class Theme:
             else:
                 unit = w.get("unit", True)
                 cels = w.get("cels", True)
-                text = _sensor.format(w["widget"], unit, cels)[0]
+                text = str(_sensor.format(w["widget"], unit, cels)[0])
             xy = tuple(w.get("xy", (50, 50)))
             color = tuple(w.get("color", (0, 0, 0, 255)))
             size = w.get("size", 10)
