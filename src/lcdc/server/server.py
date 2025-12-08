@@ -74,6 +74,22 @@ def run(__listen_addr: str, __listen_port: int, __debug: bool, __config_dir: pat
 
         return flask.abort(404)
 
+    @lcdc_app.route("/lcdc/displays/config", methods=["GET"])
+    def route_lcdc_displays_config():
+        id_v = flask.request.args.get("vendor")
+        id_p = flask.request.args.get("product")
+        try:
+            id_v = int(id_v)
+            id_p = int(id_p)
+        except Exception:
+            return flask.abort(400)
+
+        for i in range(len(lcdc_displays)):
+            if lcdc_displays[i].device()[0] == id_v and lcdc_displays[i].device()[1] == id_p:
+                return flask.jsonify(lcdc_canvas[i].get_theme_config())
+
+        return flask.abort(404)
+
     @lcdc_app.route("/lcdc/sensors", methods=["GET"])
     def route_lcdc_sensors():
         # {key: description}

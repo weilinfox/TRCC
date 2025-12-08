@@ -149,12 +149,15 @@ class Theme:
     def last_blend_frame(self) -> Image.Image:
         return self._blend_frame
 
-    def save_config(self):
-        fp = self._config_path / self._config_file
-        d = {
+    def get_config(self) -> Dict:
+        return {
             "background": str(self.background.absolute()),
             "mask": str(self.mask.absolute()),
             "widgets": self.widgets,
         }
+
+    def save_config(self):
+        fp = self._config_path / self._config_file
+        d = self.get_config()
         with open(fp, "w+") as f:
             f.write(json.dumps(d, ensure_ascii=False, indent=4))

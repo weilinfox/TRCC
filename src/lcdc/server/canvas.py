@@ -6,7 +6,7 @@ import queue
 import time
 import threading
 
-from typing import List, Union
+from typing import Dict, List, Union
 
 from .sensors import Sensors
 from ..display.usb_display import Display
@@ -72,6 +72,9 @@ class Canvas:
 
     def set_theme(self, _theme: Theme):
         self._theme = _theme
+
+    def get_theme_config(self) -> Dict:
+        return self._theme.get_config()
 
     def paint(self):
         """
