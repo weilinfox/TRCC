@@ -1,11 +1,12 @@
-import time
 
 import flask
+import io
 import logging
 import os
 import pathlib
 import signal
 import sys
+import time
 import threading
 import werkzeug
 
@@ -53,6 +54,26 @@ def run(__listen_addr: str, __listen_port: int, __debug: bool, __config_dir: pat
             ret.append({"id_vendor": d.device()[0], "id_product": d.device()[1]})
         return flask.jsonify({"displays": ret})
 
+    @lcdc_app.route("/lcdc/displays/frame", methods=["GET"])
+    def route_lcdc_displays_frame():
+        id_v = flask.request.args.get("vendor")
+        id_p = flask.request.args.get("product")
+        try:
+            id_v = int(id_v)
+            id_p = int(id_p)
+        except Exception:
+            return flask.abort(400)
+
+        for i in range(len(lcdc_displays)):
+            if lcdc_displays[i].device()[0] == id_v and lcdc_displays[i].device()[1] == id_p:
+                img = lcdc_canvas[i].last_frame()
+                buf = io.BytesIO()
+                img.convert("RGB").save(buf, format="JPEG", progressive=True, optimize=True, )
+                buf.seek(0)
+                return flask.send_file(path_or_file=buf, mimetype='image/jpeg')
+
+        return flask.abort(404)
+
     @lcdc_app.route("/lcdc/sensors", methods=["GET"])
     def route_lcdc_sensors():
         # {key: description}
@@ -60,12 +81,18 @@ def run(__listen_addr: str, __listen_port: int, __debug: bool, __config_dir: pat
 
     @lcdc_app.route("/lcdc/sensors/format_key", methods=["GET"])
     def route_lcdc_sensor_format_key():
-        key = flask.request.args.get("key", "")
+        key = flask.request.args.get("key")
+        if key is None:
+            return flask.abort(400)
+
         unit = flask.request.args.get("unit", "1")
         cels = flask.request.args.get("cels", "1")
         # without unit: unit=0
         #   fahrenheit: cels=0
         ret = lcdc_sensors.format(key, unit != "0", cels != "0")
+        if ret[0] is None:
+            return flask.abort(404)
+
         return flask.jsonify({
             "request_key": key,
             "format_str": ret[0],

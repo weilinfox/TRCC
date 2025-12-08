@@ -23,6 +23,8 @@ class Theme:
         self._default_width = _default_width
         self._default_height = _default_height
 
+        self._blend_frame = Image.new("RGBA", (_default_width, _default_height), (0, 0, 0, 0))
+
         self.background = self._config_path / "demo.jpg"
         self.mask = self._config_path / "mask.png"
         self.mask_img = None
@@ -119,11 +121,11 @@ class Theme:
 
         img.save(self.mask, format="PNG")
 
-    def blend(self, _background: Image, _sensor: Sensors) -> Image:
+    def blend(self, _background: Image.Image, _sensor: Sensors) -> Image.Image:
         base = _background.convert("RGBA")
 
         if self.mask_img.size != base.size:
-            self.mask_img = self.mask_img.resize(base.size, Image.BILINEAR)
+            self.mask_img = self.mask_img.resize(base.size, Image.Resampling.BILINEAR)
         img = Image.alpha_composite(base, self.mask_img)
 
         # widgets
@@ -141,7 +143,11 @@ class Theme:
             font = ImageFont.load_default(size)
             draw.text(xy, text, color, font)
 
+        self._blend_frame = img
         return img
+
+    def last_blend_frame(self) -> Image.Image:
+        return self._blend_frame
 
     def save_config(self):
         fp = self._config_path / self._config_file

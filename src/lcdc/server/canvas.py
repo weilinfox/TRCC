@@ -401,5 +401,8 @@ class Canvas:
 
         return 0
 
+    def last_frame(self):
+        return self._theme.last_blend_frame()
+
     def stop(self):
         self.stop_env.set()

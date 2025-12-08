@@ -5,7 +5,7 @@ import pathlib
 import psutil
 import time
 
-from typing import Callable, Dict, List, Tuple
+from typing import Callable, Dict, List, Tuple, Union
 
 
 logger = logging.getLogger(__name__)
@@ -473,7 +473,7 @@ class Sensors:
             self._mem.update()
             self._system.update()
 
-    def format(self, key: str, unit: bool, cels: bool) -> Tuple[str, str]:
+    def format(self, key: str, unit: bool, cels: bool) -> Tuple[Union[str, None], str]:
         self._update()
 
         if key not in self.format_desc.keys():
@@ -627,7 +627,7 @@ class Sensors:
                                      "SystemIoWait": "CPU Time IO Wait Percentage",
                                      })
 
-        return self.format_def.get(key, lambda _, __: "None")(unit, cels), self.format_desc.get(key, "None")
+        return self.format_def.get(key, lambda _, __: None)(unit, cels), self.format_desc.get(key, "None")
 
     def clean(self):
         """
