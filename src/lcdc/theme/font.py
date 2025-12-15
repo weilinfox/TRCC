@@ -21,6 +21,7 @@ class _FontRaw:
     slant: List[int]
     weight: List[int]
     width: List[int]
+    spacing: List[int]
     file: List[str]
     index: List[int]
 
@@ -37,6 +38,7 @@ class FontInfo:
     slant: int
     weight: int
     width: int
+    spacing: int
     file: str
 
 
@@ -45,13 +47,13 @@ class FontManager:
         self.fontconfig = ctypes.util.find_library("fontconfig")
         self.font_raw: List[_FontRaw] = []
         # { family: { style: List[FontInfo] } }
-        self.fonts: Dict[str, Dict[Tuple[int, int, int], List[FontInfo]]] = {}
+        self.fonts: Dict[str, Dict[Tuple[int, int, int, int], List[FontInfo]]] = {}
         self.families: List[str] = []
-        self.family_styles: Dict[str, List[Tuple[int, int, int]]] = {}
+        self.family_styles: Dict[str, List[Tuple[int, int, int, int]]] = {}
 
-        self.name_fonts: Dict[str, Dict[Tuple[int, int, int], List[FontInfo]]] = {}
+        self.name_fonts: Dict[str, Dict[Tuple[int, int, int, int], List[FontInfo]]] = {}
         self.fullnames: List[str] = []
-        self.fullname_styles: Dict[str, List[Tuple[int, int, int]]] = {}
+        self.fullname_styles: Dict[str, List[Tuple[int, int, int, int]]] = {}
 
     def init(self):
         if self.fontconfig is None:
@@ -98,6 +100,7 @@ class FontManager:
         _FcWidth = b"width"  # Int     Condensed, normal or expanded
         _FcStyle = b"style"  # String  Font style. Overrides weight and slant
         _FcStyleLang = b"stylelang"  # String  Language corresponding to each style name
+        _FcSpacing = b"spacing"  # Int     Proportional, dual-width, monospace or charcell
         _FcFullname = b"fullname"  # String  Font face full name where different from family and family + style
         _FcFullnameLang = b"fullnamelang"  # String  Language corresponding to each fullname
         _FcPostscriptname = b"postscriptname"  # String  Font family name in PostScript
@@ -129,7 +132,7 @@ class FontManager:
 
         # build an object set from a null-terminated list of property names
         objset = fc.FcObjectSetBuild(_FcNamelang, _FcFamily, _FcFamilyLang, _FcStyle, _FcStyleLang, _FcSlant,
-                                     _FcWeight, _FcWidth, _FcFullname, _FcFullnameLang, _FcPostscriptname, _FcFile, _FcIndex, None)
+                                     _FcWeight, _FcWidth, _FcSpacing, _FcFullname, _FcFullnameLang, _FcPostscriptname, _FcFile, _FcIndex, None)
         # build patterns with no properties
         pat = fc.FcPatternCreate()
         # list fonts
@@ -172,6 +175,7 @@ class FontManager:
                 elif _result == _FcResultNoId:
                     break
                 elif _result in [_FcResultNoMatch, _FcResultTypeMismatch]:
+                    logger.warning(f"{_property}, {_result}")
                     return None
                 elif _result == _FcResultOutOfMemory:
                     raise RuntimeError(f"Font subsystem not init for {_property} FcPatternGetInteger return FcResultOutOfMemory")
@@ -214,11 +218,14 @@ class FontManager:
                 slant=_fc_pattern_get_int(p, _FcSlant),
                 weight=_fc_pattern_get_int(p, _FcWeight),
                 width=_fc_pattern_get_int(p, _FcWidth),
+                spacing=_fc_pattern_get_int(p, _FcSpacing),
                 file=_fc_pattern_list_strings(p, _FcFile),
                 index=_fc_pattern_get_int(p, _FcIndex),
             )
             if r.weight is None or r.slant is None or r.width is None:
                 continue
+            if r.spacing is None:
+                r.spacing = [0]
             self.font_raw.append(r)
 
         # destroy
@@ -228,7 +235,7 @@ class FontManager:
         for fr in self.font_raw:
             fm = fr.family[0]
             fn = fr.fullname[0]
-            fs = (fr.slant[0], fr.weight[0], fr.width[0])
+            fs = (fr.slant[0], fr.weight[0], fr.width[0], fr.spacing[0])
             fi = FontInfo(
                 family=fr.family,
                 familylang=fr.familylang,
@@ -240,6 +247,7 @@ class FontManager:
                 slant=fr.slant[0],
                 weight=fr.weight[0],
                 width=fr.width[0],
+                spacing=fr.spacing[0],
                 file=fr.file[0],
             )
 
@@ -250,6 +258,17 @@ class FontManager:
             if fs not in self.fonts[fm].keys():
                 self.fonts[fm][fs] = []
                 self.family_styles[fm].append(fs)
+            # check postscriptname
+            # is not correct
+            #pnf = False
+            #if len(self.fonts[fm][fs]) > 0 and fi.postscriptname:
+            #    for fp in self.fonts[fm][fs]:
+            #        if len(fp.postscriptname) == 0:
+            #            continue
+            #        for p in fi.postscriptname:
+            #            if p in fp.postscriptname:
+            #                pnf = True
+            #if not pnf:
             self.fonts[fm][fs].append(fi)
 
             if fn not in self.name_fonts.keys():
@@ -271,23 +290,18 @@ if __name__ == "__main__":
     font = FontManager()
     font.init()
 
-    for f in font.fullnames:
-        logger.warning(f)
+    logger.warning(f"===== start =====")
+    for fn in font.fullnames:
+        logger.warning(f"{fn}")
+        for fs in font.fullname_styles[fn]:
+            for f in font.name_fonts[fn][fs]:
+                logger.warning(f"\t\t{f}")
+        logger.warning(f"")
 
-    for fm in font.fonts.keys():
+    for fm in font.families:
         for fs in font.fonts[fm].keys():
             if len(font.fonts[fm][fs]) > 1:
                 logger.warning(f"===== {fm}, {fs} =====")
                 for f in font.fonts[fm][fs]:
-                    logger.warning(f"\t{f}")
-                logger.warning(f"===== end =====")
-
-    logger.warning("")
-    logger.warning(f"===== start =====")
-    for fn in font.name_fonts.keys():
-        for fs in font.name_fonts[fn].keys():
-            if len(font.name_fonts[fn][fs]) > 1:
-                logger.warning(f"===== {fn}, {fs} =====")
-                for f in font.name_fonts[fn][fs]:
                     logger.warning(f"\t{f}")
                 logger.warning(f"===== end =====")
