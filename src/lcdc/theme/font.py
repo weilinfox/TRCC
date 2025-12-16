@@ -25,9 +25,12 @@ class _FontRaw:
     aspect: List[float]
     pixelsize: List[float]
     spacing: List[int]
+    hinting: List[bool]
     file: List[str]
     index: List[int]
+    decorative: List[bool]
     symbol: List[bool]
+    variable: List[bool]
 
 
 @dataclasses.dataclass
@@ -46,7 +49,10 @@ class FontInfo:
     aspect: float
     pixelsize: float
     spacing: int
+    hinting: bool
+    decorative: bool
     symbol: bool
+    variable: bool
     file: str
 
 
@@ -112,6 +118,7 @@ class FontManager:
         _FcSize = b"size"  # Double  Point size
         _FcAspect = b"aspect"  # Double  Stretches glyphs horizontally before hinting
         _FcPixelSize = b"pixelsize"  # Double  Pixel size
+        _FcHinting = b"hinting"  # Bool    Whether the rasterizer should use hinting
         _FcFullname = b"fullname"  # String  Font face full name where different from family and family + style
         _FcFullnameLang = b"fullnamelang"  # String  Language corresponding to each fullname
         _FcPostscriptname = b"postscriptname"  # String  Font family name in PostScript
@@ -146,8 +153,8 @@ class FontManager:
 
         # build an object set from a null-terminated list of property names
         objset = fc.FcObjectSetBuild(_FcNamelang, _FcFamily, _FcFamilyLang, _FcStyle, _FcStyleLang, _FcSlant,
-                                     _FcWeight, _FcWidth, _FcSpacing, _FcSize, _FcAspect, _FcPixelSize, _FcSymbol,
-                                     _FcFullname, _FcFullnameLang, _FcPostscriptname, _FcFile, _FcIndex, None)
+                                     _FcWeight, _FcWidth, _FcSpacing, _FcSize, _FcAspect, _FcPixelSize, _FcSymbol, _FcHinting,
+                                     _FcFullname, _FcFullnameLang, _FcPostscriptname, _FcDecorative, _FcVariable, _FcFile, _FcIndex, None)
         # build patterns with no properties
         pat = fc.FcPatternCreate()
         # list fonts
@@ -256,7 +263,10 @@ class FontManager:
                 aspect=_fc_pattern_get_double(p, _FcAspect),
                 pixelsize=_fc_pattern_get_double(p, _FcPixelSize),
                 spacing=_fc_pattern_get_int(p, _FcSpacing),
+                hinting=_fc_pattern_get_bool(p, _FcHinting),
+                decorative=_fc_pattern_get_bool(p, _FcDecorative),
                 symbol=_fc_pattern_get_bool(p, _FcSymbol),
+                variable=_fc_pattern_get_bool(p, _FcVariable),
                 file=_fc_pattern_list_strings(p, _FcFile),
                 index=_fc_pattern_get_int(p, _FcIndex),
             )
@@ -272,6 +282,8 @@ class FontManager:
                 r.pixelsize = [-1]
             if r.symbol is None:
                 r.symbol = [False]
+            if r.hinting is None:
+                r.hinting = [-1]
             self.font_raw.append(r)
 
         # destroy
@@ -282,6 +294,7 @@ class FontManager:
             fm = fr.family[0]
             fn = fr.fullname[0]
             fs = (fr.slant[0], fr.weight[0], fr.width[0], fr.spacing[0])
+            logger.warning(f"{fr}")
             fi = FontInfo(
                 family=fr.family,
                 familylang=fr.familylang,
@@ -297,7 +310,10 @@ class FontManager:
                 aspect=fr.aspect[0],
                 pixelsize=fr.pixelsize[0],
                 spacing=fr.spacing[0],
+                hinting=fr.hinting[0],
+                decorative=fr.decorative[0],
                 symbol=fr.symbol[0],
+                variable=fr.variable[0],
                 file=fr.file[0],
             )
 
