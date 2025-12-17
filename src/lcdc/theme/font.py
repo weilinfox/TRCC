@@ -123,7 +123,7 @@ class FontManager:
         _FcStyle = b"style"  # String  Font style. Overrides weight and slant
         _FcStyleLang = b"stylelang"  # String  Language corresponding to each style name
         _FcSpacing = b"spacing"  # Int     Proportional, dual-width, monospace or charcell
-        _FcSize = b"size"  # Double  Point size
+        _FcSize = b"size"  # Range (Double)  Point size
         _FcAspect = b"aspect"  # Double  Stretches glyphs horizontally before hinting
         _FcPixelSize = b"pixelsize"  # Double  Pixel size
         _FcHintstyle = b"hintstyle"  # Int     Automatic hinting style
@@ -228,10 +228,12 @@ class FontManager:
                     pass
                 elif _result == _FcResultNoId:
                     break
-                elif _result in [_FcResultNoMatch, _FcResultTypeMismatch]:
+                elif _result == _FcResultNoMatch:
                     return None
+                if _result == _FcResultTypeMismatch:
+                    raise TypeError(f"Font subsystem not init for {_property} data not double type")
                 elif _result == _FcResultOutOfMemory:
-                    raise RuntimeError(f"Font subsystem not init for {_property} FcPatternGetInteger return FcResultOutOfMemory")
+                    raise RuntimeError(f"Font subsystem not init for {_property} FcPatternGetDouble return FcResultOutOfMemory")
                 out_list.append(_i.value)
                 idx += 1
 
@@ -288,6 +290,16 @@ class FontManager:
             )
             if r.weight is None or r.slant is None or r.width is None:
                 continue
+            # FcBoolDefaults[] = {
+            #     { FC_HINTING_OBJECT,	   FcTrue	},  /* !FT_LOAD_NO_HINTING */
+            #     { FC_VERTICAL_LAYOUT_OBJECT,   FcFalse	},  /* FC_LOAD_VERTICAL_LAYOUT */
+            #     { FC_AUTOHINT_OBJECT,	   FcFalse	},  /* FC_LOAD_FORCE_AUTOHINT */
+            #     { FC_GLOBAL_ADVANCE_OBJECT,    FcTrue	},  /* !FC_LOAD_IGNORE_GLOBAL_ADVANCE_WIDTH */
+            #     { FC_EMBEDDED_BITMAP_OBJECT,   FcTrue 	},  /* !FC_LOAD_NO_BITMAP */
+            #     { FC_DECORATIVE_OBJECT,	   FcFalse	},
+            #     { FC_SYMBOL_OBJECT,		   FcFalse	},
+            #     { FC_VARIABLE_OBJECT,	   FcFalse	},
+            # };
             if r.spacing is None:
                 r.spacing = [-1]
             if r.size is None:
