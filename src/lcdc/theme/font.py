@@ -46,7 +46,7 @@ class FontInfo:
     fullname: List[str]
     fullnamelang: List[str]
     postscriptname: List[str]
-    fontformat: List[str]
+    fontformat: str
     slant: int
     weight: int
     width: int
@@ -277,7 +277,7 @@ class FontManager:
                 spacing=_fc_pattern_get_int(p, _FcSpacing),
                 hintstyle=_fc_pattern_get_int(p, _FcHintstyle),
                 hinting=_fc_pattern_get_bool(p, _FcHinting),
-                fontformat=_fc_pattern_get_int(p, _FcFontformat),
+                fontformat=_fc_pattern_list_strings(p, _FcFontformat),
                 embolden=_fc_pattern_get_bool(p, _FcEmbolden),
                 decorative=_fc_pattern_get_bool(p, _FcDecorative),
                 symbol=_fc_pattern_get_bool(p, _FcSymbol),
@@ -289,7 +289,7 @@ class FontManager:
             if r.weight is None or r.slant is None or r.width is None:
                 continue
             if r.spacing is None:
-                r.spacing = [0]
+                r.spacing = [-1]
             if r.size is None:
                 r.size = [-1]
             if r.aspect is None:
@@ -304,8 +304,6 @@ class FontManager:
                 r.embolden = [-1]
             if r.hintstyle is None:
                 r.hintstyle = [-1]
-            if r.fontformat is None:
-                r.fontformat = [-1]
             self.font_raw.append(r)
 
         # destroy
@@ -334,7 +332,7 @@ class FontManager:
                 spacing=fr.spacing[0],
                 hintstyle=fr.hintstyle[0],
                 hinting=fr.hinting[0],
-                fontformat=fr.fontformat,
+                fontformat=fr.fontformat[0],
                 embolden=fr.embolden[0],
                 decorative=fr.decorative[0],
                 symbol=fr.symbol[0],
